@@ -23,9 +23,9 @@ const LoanedBookComponent: React.FC<BookComponentProps> = ({ bookData }) => {
   const queryClient = useQueryClient();
 
   const returnBook = async () => {
-    const book_id = bookData.id;
+    const id = bookData.id;
     const response = await axiosWithAuth.post(
-      `${API_URL}/api/return-book?book_id=${book_id}`
+      `${API_URL}/api/return-book?id=${id}`
     );
 
     if (!response || response.status === 401) {
@@ -68,6 +68,7 @@ const LoanedBookComponent: React.FC<BookComponentProps> = ({ bookData }) => {
             <h3 className="text-[13px] xs:text-[15px] sm:text-[18px] mb-2 font-semibold text-center">
               {bookData.title}
             </h3>
+            <p>{bookData.id}</p>
             <p className="text-[13px] text-center mb-2">{bookData.author}</p>
             <h4 className="text-sm mb-4">{bookData.category_name}</h4>
             <p className="text-[13px]">{bookData.content}</p>

@@ -2,18 +2,18 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import BrandSignUpForm from "./signup-form";
+import SignUpForm from "./signup-form";
 
-export default function BrandSignUpPage() {
+export default function SignUpPage() {
   const router = useRouter();
 
   useEffect(() => {
     const token = localStorage.getItem("optlib_auth_token");
 
     if (token) {
-      router.push("/dashboard");
+      router.push("/home");
     }
   }, [router]);
 
-  return <BrandSignUpForm />;
+  return <SignUpForm />;
 }

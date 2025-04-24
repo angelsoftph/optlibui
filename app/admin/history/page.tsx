@@ -37,26 +37,37 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { API_URL } from "@/lib/constants";
 import { useQuery } from "@tanstack/react-query";
-import Loading from "@/app/loading";
 import { debounce } from "lodash";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { fetchWithAuth } from "@/hooks/useAuthFetch";
-import { UserType } from "@/lib/types";
+import { HistoryType } from "@/lib/types";
 import { RootState } from "@/store";
 import { useSelector } from "react-redux";
 import { AdminSidebar } from "../sidebar";
+import Loading from "@/app/loading";
+import { formatDate } from "@/lib/utils";
+import Swal from "sweetalert2";
 
-interface FetchUsersParams {
+interface FetchHistoryParams {
   page: number;
   limit: number;
 }
 
-interface FetchUsersResponse {
-  users: UserType[];
+interface FetchHistoryResponse {
+  history: HistoryType[];
   total: number;
 }
 
-export const columns: ColumnDef<UserType>[] = [
+const sendReminder = () => {
+  Swal.fire({
+    title: "Success",
+    text: "A reminder has been sent to the borrower to return the book.",
+    icon: "success",
+    confirmButtonText: "Great!",
+  });
+};
+
+export const columns: ColumnDef<HistoryType>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -80,28 +91,46 @@ export const columns: ColumnDef<UserType>[] = [
     enableHiding: false,
   },
   {
+    accessorKey: "title",
+    header: "Title",
+    cell: ({ row }) => (
+      <div className="capitalize">{row.getValue("title")}</div>
+    ),
+  },
+  {
     accessorKey: "fullname",
-    header: "Full Name",
+    header: "Loaned By",
     cell: ({ row }) => (
       <div className="capitalize">{row.getValue("fullname")}</div>
     ),
   },
   {
-    accessorKey: "email",
-    header: "Email",
-    cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
+    accessorKey: "created_at",
+    header: "Loaned On",
+    cell: ({ row }) => <div>{formatDate(row.getValue("created_at"))}</div>,
   },
   {
-    accessorKey: "username",
-    header: "username",
+    accessorKey: "updated_at",
+    header: "Returned On",
+    cell: ({ row }) => <div>{formatDate(row.getValue("updated_at"))}</div>,
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
     cell: ({ row }) => (
-      <div className="lowercase">{row.getValue("username")}</div>
+      <div className="capitalize">
+        {row.getValue("status") === "R" ? "Returned" : "Out"}
+      </div>
     ),
   },
   {
     id: "actions",
     enableHiding: false,
-    cell: () => {
+    cell: ({ row }) => {
+      const status = row.original.status;
+
+      if (status === "R") return null;
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -113,8 +142,9 @@ export const columns: ColumnDef<UserType>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Edit</DropdownMenuItem>
-            <DropdownMenuItem>Delete</DropdownMenuItem>
+            <DropdownMenuItem onClick={sendReminder}>
+              Send Reminder
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -122,12 +152,12 @@ export const columns: ColumnDef<UserType>[] = [
   },
 ];
 
-const fetchUsers = async ({
+const fetchHistory = async ({
   page,
   limit,
-}: FetchUsersParams): Promise<FetchUsersResponse> => {
+}: FetchHistoryParams): Promise<FetchHistoryResponse> => {
   const response = await fetchWithAuth(
-    `${API_URL}/api/get-users?limit=${limit}&offset=${page}`
+    `${API_URL}/api/loan-history?limit=${limit}&offset=${page}`
   );
 
   if (!response || response.status === 401) {
@@ -135,17 +165,17 @@ const fetchUsers = async ({
   }
 
   if (!response.ok) {
-    throw new Error("Failed to fetch users");
+    throw new Error("Failed to fetch history");
   }
 
   const data = await response.json();
   return {
-    users: Array.isArray(data?.users) ? data.users : [],
+    history: Array.isArray(data?.history) ? data.history : [],
     total: data?.total || 0,
   };
 };
 
-const ManageUsersPage = () => {
+const LoanHistoryPage = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -161,17 +191,17 @@ const ManageUsersPage = () => {
       : null;
   const [showLoading, setShowLoading] = useState(true);
 
-  const { data, isLoading, isError } = useQuery<FetchUsersResponse, Error>({
-    queryKey: ["users", pageIndex],
-    queryFn: () => fetchUsers({ page: pageIndex, limit }),
+  const { data, isLoading, isError } = useQuery<FetchHistoryResponse, Error>({
+    queryKey: ["history", pageIndex],
+    queryFn: () => fetchHistory({ page: pageIndex, limit }),
     placeholderData: (previousData) => previousData,
   });
 
-  const users = data?.users ?? [];
+  const history = data?.history ?? [];
   const total = data?.total ?? 0;
 
   const table = useReactTable({
-    data: users,
+    data: history,
     columns,
     manualPagination: true,
     pageCount: Math.ceil(total / limit),
@@ -204,7 +234,7 @@ const ManageUsersPage = () => {
   const debouncedFilter = useMemo(
     () =>
       debounce((value: string) => {
-        table.getColumn("fullname")?.setFilterValue(value);
+        table.getColumn("title")?.setFilterValue(value);
       }, 300),
     [table]
   );
@@ -230,10 +260,10 @@ const ManageUsersPage = () => {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-gray-500">Loading users...</p>;
+    return <p className="text-sm text-gray-500">Loading history...</p>;
   }
   if (isError) {
-    return <p className="text-sm text-red-500">Error loading users.</p>;
+    return <p className="text-sm text-red-500">Error loading history.</p>;
   }
 
   return (
@@ -242,11 +272,11 @@ const ManageUsersPage = () => {
       <main className="flex flex-col w-full h-screen">
         <SidebarTrigger className="text-black" />
         <div className="flex flex-col w-full h-screen gap-4 px-6 py-0 text-black">
-          <h1 className="text-2xl font-semibold">Manage Users</h1>
+          <h1 className="text-2xl font-semibold">Loan History</h1>
           <div className="flex flex-col w-full p-6 text-black">
             <div className="flex items-center py-4">
               <Input
-                placeholder="Filter fullname..."
+                placeholder="Filter title..."
                 onChange={(event) => debouncedFilter(event.target.value)}
                 className="max-w-sm"
               />
@@ -358,4 +388,4 @@ const ManageUsersPage = () => {
   );
 };
 
-export default ManageUsersPage;
+export default LoanHistoryPage;

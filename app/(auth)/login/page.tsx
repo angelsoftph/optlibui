@@ -11,7 +11,7 @@ export default function SignInPage() {
     const token = localStorage.getItem("optlib_auth_token");
 
     if (token) {
-      router.push("/dashboard");
+      router.push("/home");
     }
   }, [router]);
 
