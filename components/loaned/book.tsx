@@ -35,6 +35,7 @@ const LoanedBookComponent: React.FC<BookComponentProps> = ({ bookData }) => {
     if (response.status === 200) {
       queryClient.invalidateQueries({ queryKey: ["books"] });
       queryClient.invalidateQueries({ queryKey: ["history"] });
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
 
       Swal.fire({
         title: "Success",
