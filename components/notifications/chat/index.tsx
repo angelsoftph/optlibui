@@ -15,7 +15,7 @@ const ChatNotificationListenerComponent: React.FC<
   NotificationListenerProps
 > = ({ channelName, setMessages, currentUser }) => {
   useEffect(() => {
-    Pusher.logToConsole = false;
+    Pusher.logToConsole = true;
 
     const pusher = new Pusher(PUSHER_KEY, {
       cluster: PUSHER_CLUSTER,
