@@ -15,7 +15,7 @@ interface FetchBooksParams {
 }
 
 interface FetchBooksResponse {
-  history: BookType[];
+  loans: BookType[];
   total: number;
 }
 
@@ -24,7 +24,7 @@ const checkAuthToken = (): boolean => {
   return !!token;
 };
 
-const LoanHistoryComponent: React.FC = () => {
+const UserLoansComponent: React.FC = () => {
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
   const observerRef = useRef<HTMLDivElement | null>(null);
@@ -54,14 +54,14 @@ const LoanHistoryComponent: React.FC = () => {
 
     const data = await response.json();
     return {
-      history: Array.isArray(data?.history) ? data.history : [],
+      loans: Array.isArray(data?.loans) ? data.loans : [],
       total: data?.total || 0,
     };
   };
 
   const { data, isLoading, isError, fetchNextPage, hasNextPage } =
     useInfiniteQuery<FetchBooksResponse, Error>({
-      queryKey: ["history"],
+      queryKey: ["loans"],
       queryFn: ({ pageParam = 0 }) =>
         fetchBooks({ offset: pageParam as number }),
       initialPageParam: 0,
@@ -72,7 +72,7 @@ const LoanHistoryComponent: React.FC = () => {
       enabled: !!user?.id,
     });
 
-  const history = data?.pages.flatMap((page) => page.history) || [];
+  const loans = data?.pages.flatMap((page) => page.loans) || [];
 
   useEffect(() => {
     const target = observerRef.current;
@@ -107,10 +107,10 @@ const LoanHistoryComponent: React.FC = () => {
       )}
 
       <div className="flex flex-col gap-4">
-        {history.map((book: BookType, index) => (
+        {loans.map((book: BookType, index) => (
           <div key={index} className="w-full">
             <LoanHistoryBookComponent bookData={book} />
-            {index === history.length - 1 && <div ref={observerRef} />}
+            {index === loans.length - 1 && <div ref={observerRef} />}
           </div>
         ))}
       </div>
@@ -118,4 +118,4 @@ const LoanHistoryComponent: React.FC = () => {
   );
 };
 
-export default LoanHistoryComponent;
+export default UserLoansComponent;
